@@ -18,6 +18,10 @@
 #include <deque>
 #include <Eigen/Dense>
 
+#include <iostream>
+#include <string>
+#include <fstream>
+
 #include <bits/stdc++.h>
 
 #include <ros/ros.h>
@@ -235,10 +239,10 @@ int main(int argc, char** argv)
 
   GazeboCubeSpawner spawner(nh);
 
-  int seed;
+  int seed = 0;
   double density;
 
-  ros::param::param<int>("~seed", seed, 0);
+  // ros::param::param<int>("~seed", seed, 0);
   ros::param::param<double>("~density", density, 0.1);
 
   ros::Publisher marker_array_pub = nh.advertise<visualization_msgs::MarkerArray>("forest", 1);
@@ -248,7 +252,7 @@ int main(int argc, char** argv)
 
   // Seed is from 0 - 10 for this benchmark.
   std::srand(seed);
-  Eigen::Vector3d size(15.0, 15.0, 5.0);  // world size
+  Eigen::Vector3d size(50.0, 50.0, 5.0);  // world size
 
   // Free space around the edges (so we know we don't start in collision).
   Eigen::Vector3d free_space_bounds(2.0, 2.0, 2.0);
@@ -257,7 +261,12 @@ int main(int argc, char** argv)
   const double kMinHeight = 2.0;
   const double kMaxHeight = 5.0;
   const double kMinRadius = 0.25;
-  const double kMaxRadius = 0.3;
+  const double kMaxRadius = 1.0;
+
+  // data files
+  std::ofstream data1;
+  data1.open("/home/derek/Desktop/obstacles.csv");
+  data1 << "x" << "," << "y" << "," << "z" << "," << "radius" << "," << "height"  << "\n";
 
   double usable_area = size.x() * size.y();
   int num_objects = static_cast<int>(std::floor(density * usable_area));
@@ -283,6 +292,7 @@ int main(int argc, char** argv)
     double y = position[1];
     double z = position[2];
 
+    data1 << x << "," << y << "," << z << "," << radius << "," << height  << "\n";
     spawner.spawnCube(std::to_string(i), "world", x, y, z, 0, 0, 0, 1, radius, height, 1, 2);
 
     std::string x_string = std::to_string(x);
@@ -342,6 +352,8 @@ int main(int argc, char** argv)
 
     //////////////////////
   }
+
+  data1.close();
 
   printf("Total Volume=%f\n", total_volume);
   printf("Usable_area=%f\n", usable_area);

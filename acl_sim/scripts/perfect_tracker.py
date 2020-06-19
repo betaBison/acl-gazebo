@@ -12,6 +12,8 @@ from geometry_msgs.msg import Pose
 from gazebo_msgs.msg import ModelState
 import numpy as np
 from numpy import linalg as LA
+import csv
+from datetime import datetime
 
 from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_about_axis, quaternion_multiply
 
@@ -46,11 +48,13 @@ class FakeSim:
         self.timer = rospy.Timer(rospy.Duration(0.01), self.pubTF)
         name = rospy.get_namespace()
         self.name = name[1:-1]
-        
+
         rospy.sleep(1.0)
 
         self.state.header.frame_id="world"
-        self.pubState.publish(self.state)  
+        self.pubState.publish(self.state)
+
+        self.initialized = False
 
         pose=Pose()
         pose.position.x=self.state.pos.x;
@@ -89,9 +93,9 @@ class FakeSim:
           axis=np.cross(accel, axis_z);
 
           dot=np.dot(accel,axis_z)
-          angle=math.acos(dot)        
+          angle=math.acos(dot)
           drone_quaternion = quaternion_about_axis(-angle, axis)# Quaternion(axis=axis, angle=-angle)
-          
+
           #Use the yaw from goal
           drone_quaternion_with_yaw=quaternion_multiply(drone_quaternion,quaternion_from_euler(data.yaw, 0.0, 0.0, 'rzyx'))
 
@@ -108,8 +112,8 @@ class FakeSim:
         #self.gazebo_state.twist = data.twist
 
         ## HACK TO NOT USE GAZEBO
-        gazebo_state.reference_frame = "world" 
-        self.pubGazeboState.publish(gazebo_state)  
+        gazebo_state.reference_frame = "world"
+        self.pubGazeboState.publish(gazebo_state)
         ## END OF HACK TO NOT USE GAZEBO
 
 
@@ -118,7 +122,22 @@ class FakeSim:
         self.state.pos=data.pos
         self.state.vel=data.vel
         self.state.quat=gazebo_state.pose.orientation
-        self.pubState.publish(self.state)  
+        self.pubState.publish(self.state)
+        print("I'm here: ",data.pos)
+        print(data.vel)
+
+
+        if not self.initialized:
+            self.file_name = '/home/derek/Desktop/state_' + str(datetime.now()) + ".csv"
+            with open(self.file_name, mode='a+') as data_file:
+                data_writer = csv.writer(data_file, delimiter=',')
+                data_writer.writerow(['x','y','z','vx','vy','vz'])
+            self.initialized = True
+
+        with open(self.file_name, mode='a+') as data_file:
+            data_writer = csv.writer(data_file, delimiter=',')
+            data_writer.writerow([data.pos.x,data.pos.y,data.pos.z,data.vel.x,data.vel.y,data.vel.z])
+
         # print("State after:")
         # print(self.state.quat)
 
@@ -147,11 +166,11 @@ class FakeSim:
         marker.scale.x=1.0;
         marker.scale.y=1.0;
         marker.scale.z=1.0;
-        return marker 
+        return marker
 
 
 
-             
+
 
 def startNode():
     c = FakeSim()
